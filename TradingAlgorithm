@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sun May 31 12:01:30 2020
+
+@author: avantikaghosh
+"""
+
+import yfinance as financeSource
+import numpy as np
+import pandas as pd
+import datetime as date
+import copy
+import matplotlib.pyplot as plt
+
+
+def volatility(data):
+    data = data.copy()
+    volatility = data["mon_ret"].std() * np.sqrt(15)
+    return volatility
+
+
+def maxDrawDown(data):
+    data = data.copy()
+    data["drawdown"] = (1 + data["mon_ret"]).cumprod().cummax() - (1 + data["mon_ret"]).cumprod()
+    data["drawdown_pct"] = data["drawdown"]/(1 + data["mon_ret"]).cumprod().cummax()
+    return data["drawdown_pct"].max()
+
+def CAGR(data):
+    data = data.copy()
+    data["cum_return"] = (1 + data["mon_ret"]).cumprod()
+    number = len(data)/12
+    return ((data["cum_return"].tolist()[-1])**(1/number) - 1)
+
+def sharpeRatio(data,riskFree):
+    data = data.copy()
+    return ((CAGR(data) - riskFree)/volatility(data))
+
+
+
+tickers = ["HD","IBM","INTC","JNJ","JPM","MCD","MRK","MSFT","NKE","PFE","PG","TRV",
+           "UTX","UNH","VZ","V","WMT","DIS"]
+
+ohlcValues = {}        
+
+
+for ticker in tickers:
+    ohlcValues[ticker] = financeSource.download(ticker,date.datetime.today()-date.timedelta(3650),date.datetime.today(),interval='1week')
+ 
+tickers = ohlcValues.keys() 
+
+
+ohlcDictionary = copy.deepcopy(ohlcValues)
+for ticker in tickers:
+    print("Monthly return: ", ticker)
+    pd.DataFrame()[ticker] = ohlcDictionary[ticker]["Adj Close"].pct_change()
+
+
+def porfolio(data,stocksN,removeStocks):
+    data = data.copy()
+    portfolio = []
+    monthlyReturns = []
+    for index in range(1,len(data)):
+        if len(portfolio) > 0:
+            monthlyReturns.append(data[portfolio].iloc[index,:].mean())
+            badStocks = data[portfolio].iloc[index,:][:removeStocks].index.values.tolist()
+            for stock in portfolio:
+                if stock not in badStocks:
+                    portfolio = portfolio + stock
+        validStocks = data.iloc[index,:].sort_values(ascending=False)[:(stocksN - len(portfolio))].index.values.tolist()
+        portfolio = portfolio + validStocks
+    return pd.DataFrame(np.array(monthlyReturns),columns=["mon_ret"])
+
+
+
+KPIS = financeSource.download("^DJI",date.date.today()-date.timedelta(1900),date.date.today(),interval='1mo')
+KPIS["mon_ret"] = KPIS["Adj Close"].pct_change()
+CAGR(KPIS)
+sharpeRatio(KPIS,0.02)
+maxDrawDown(KPIS)
+
+subs = plt.subplots()
+plt.plot((1 + KPIS["mon_ret"][2:].reset_index(drop=True)).cumprod())
+plt.title("Index Return vs Strategy Return")
+plt.ylabel("CUM Returns")
+plt.xlabel("Time (months)")
+subs.legend(["Strategy Return","Index Return"])
