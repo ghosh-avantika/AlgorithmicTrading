@@ -39,7 +39,7 @@ def sharpeRatio(data,riskFree):
 
 
 tickers = ["HD","IBM","INTC","JNJ","JPM","MCD","MRK","MSFT","NKE","PFE","PG","TRV",
-           "UTX","UNH","VZ","V","WMT","DIS"]
+           "UTX","UNH","VZ","V","WMT","DIS", "NET", "FSLY", "EURN", "STRG"]
 
 ohlcValues = {}        
 
